@@ -17,6 +17,7 @@ import matplotlib.gridspec as gridspec # more plotting
 from matplotlib.ticker import (MultipleLocator, LogLocator) # even more plotting
 from matplotlib.lines import Line2D # yet more plotting
 import argparse
+import copy
 from itertools import groupby
 
 outputDirectory = 'plots'
@@ -29,7 +30,7 @@ parser.add_argument('--debug', '-d')
 
 args = parser.parse_args()
 
-eps = 1e-8
+eps = 1e-20
 
 if not args.files:   # if filename is not given
     parser.error('file(s) not given')
@@ -122,7 +123,8 @@ def unpack(filename):
         for k in range(0,len(plot_list[l])-1):
             TEMP.append(np.array([[str(x) for x in plot_list[l][k][0].split()]]))
             if(TEMP[k][0][0]=='#'):
-               kstar = k
+                # k* is the index at which the plot data begins
+                kstar = k
         z = len(plot_list[l])-kstar-2 # (length of the plot info list - 1) - (k* - 1)
         res = TEMP[-z:]
         for j in range(0,kstar):
@@ -144,7 +146,22 @@ def unpack(filename):
         p.addPlot(dataset(t, xl, xh, y, col=c, errs=0, errsM=errsm, errsP=errsp))
     return p
 
-def plot_single(p_env_l, xLab, yLab, Title, xTup):
+def sort_env(p_env, sv_list):
+    """Sorts the data in a plot_env if scale bands are present
+       currently only implemented for central and two variations"""
+    scale_vars = []
+    rest = []
+    j=0
+    while j < len(p_env.plots):
+        if (j in sv_list):
+            scale_vars.append([p_env.plots[j], p_env.plots[j+1], p_env.plots[j+2]])
+            j+=3
+        else:
+            rest.append(p_env.plots[j])
+            j+=1
+    return scale_vars, rest
+
+def plot_single(p_env_l, xLab, yLab, Title, xTup, yTup):
     """Plots a single histogram"""
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
@@ -155,25 +172,29 @@ def plot_single(p_env_l, xLab, yLab, Title, xTup):
     bins = p_env_l[0].plots[0].Xl[:]
     bins.append(p_env_l[0].plots[0].Xh[-1])
     ax1.set_ylabel(yLab)
+    #ax1.set_xlabel(xLab)
     ax2.set_xlabel(xLab)
-    ax2.set_ylim([0.7,1.7])
-    ax2.set_ylabel("Ratio to Data")
-    ax1.set_xlim(bins[0], 5)
-    ax1.set_ylim(0.,1.4)
+    ax2.set_ylim(0.4, 1.7)
+    #ax2.set_ylabel("Ratio to Data")
+    ax1.set_xlim(bins[0], bins[-1])
+    ax1.set_ylim(yTup[0], yTup[1])
     #if(p_env_l[0].logY == 1):
-    #    ax1.set_yscale('log')
+    #ax1.set_yscale('log')
 
     ax1.yaxis.set_ticks_position('both')
     ax1.xaxis.set_ticks_position('both')
     ax1.xaxis.set_major_locator(MultipleLocator(xTup[0]))
     ax1.xaxis.set_minor_locator(MultipleLocator(xTup[1]))
-    ax1.yaxis.set_minor_locator(MultipleLocator(0.2))
+    #ax1.yaxis.set_minor_locator(MultipleLocator(0.5))
+    #ax1.yaxis.set_minor_locator(MultipleLocator(0.1))
+    #ax1.yaxis.set_minor_locator(MultipleLocator(0.2))
 
-    ax2.yaxis.set_minor_locator(MultipleLocator(0.05))
+    ax2.yaxis.set_minor_locator(MultipleLocator(0.1))
     ax2.yaxis.set_major_locator(MultipleLocator(0.2))
     ax2.yaxis.set_ticks_position('both')
     ax2.xaxis.set_ticks_position('both')
 
+    p_env=p_env_l[0]
     pts=[]
     p_env = p_env_l[0]
     new_bins = p_env.plots[0].Xh[:]
@@ -182,28 +203,81 @@ def plot_single(p_env_l, xLab, yLab, Title, xTup):
     for j in range(0, len(new_bins)-1):
         pts.append((new_bins[j+1]+new_bins[j])/2.)
         x_errors.append((new_bins[j+1]-new_bins[j])/2.)
-    # plot data
-    for p in p_env.plots:
-        if p.title == "Data":
-            ax1.errorbar(pts, [z for z in p.Y], xerr = x_errors, yerr = (p.errsM, p.errsP), fmt = '.', color = "black", markersize='5', linewidth = .75, label = r'ATLAS: arXiv/1407.5756 $\sqrt{s}=7$ TeV')
-            ax2.errorbar(pts, [(x+eps)/(y+eps) for x, y in zip(p.Y, p.Y)], xerr = x_errors, yerr = ([(x+eps)/(y+eps) for x, y in zip(p.errsM, p.Y)],[(x+eps)/(y+eps) for x, y in zip(p.errsP, p.Y)]),
-                    fmt = '.', markersize='5', color = "black", linewidth = .75, label = r'ATLAS: arXiv/1407.5756 $\sqrt{s}=7$ TeV')
-        else:
-            ax1.step(p.Xl, [z for z in p.Y], where = 'post', color=p.col, linewidth = .75, label=p.title, linestyle='-')
-            ax2.step(p.Xl, [x/(y+eps) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], where = 'post', color=p.col, linewidth = .75, label=p.title)
-            #if(p.errs == 1):
-            ax1.errorbar(pts, [z for z in p.Y], xerr = x_errors, yerr = (p.errsM, p.errsP), color=p.col, fmt = '', linewidth = .75, ls = 'none')
-            ax2.errorbar(pts, [x/(y+eps) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], xerr = x_errors,
-                yerr = ([x/(y+eps) for x, y in zip(p.errsM, p.Y)],[x/(y+eps) for x, y in zip(p.errsP, p.Y)]), color=p.col, fmt = '', linewidth = 1., ls = 'none')
+  #  # plot data
+  #  for p in p_env.plots:
+  #      if p.title == "Data":
+  #          ax1.errorbar(pts, [z for z in p.Y], xerr = x_errors, yerr = (p.errsM, p.errsP), fmt = '.', color = "black", markersize='5', linewidth = .75, label = r'Data')
+  #          #ax2.errorbar(pts, [(x+eps)/(y+eps) for x, y in zip(p.Y, p.Y)], xerr = x_errors, yerr = ([(x+eps)/(y+eps) for x, y in zip(p.errsM, p.Y)],[(x+eps)/(y+eps) for x, y in zip(p.errsP, p.Y)]),
+  #          #        fmt = '.', markersize='5', color = "black", linewidth = .75, label = r'ATLAS: arXiv/1407.5756 $\sqrt{s}=7$ TeV')
+  #      else:
+
+    sv,rest = sort_env(p_env_l[0],[0])
+    for pl in sv:
+        ax1, ax2 = plot_scale_bands(pl, ax1, ax2, pts, x_errors, data=sv[0][0])
+    for p in rest:
+         ax1.step(p.Xl, [z for z in p.Y], where = 'post', color=p.col, linewidth = .75, label=p.title, linestyle='-')
+         ax2.step(p.Xl, [x/(y+eps) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], where = 'post', color=p.col, linewidth = .75, label=p.title)
+         #if(p.errs == 1):
+         ax1.errorbar(pts, [z for z in p.Y], xerr = x_errors, yerr = (p.errsM, p.errsP), color=p.col, fmt = '', linewidth = .75, ls = 'none')
+         ax2.errorbar(pts, [x/(y+eps) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], xerr = x_errors,
+              yerr = ([x/(y+eps) for x, y in zip(p.errsM, p.Y)],[x/(y+eps) for x, y in zip(p.errsP, p.Y)]), color=p.col, fmt = '', linewidth = 1., ls = 'none')
+
 
     #custom_lines = [Line2D([0], [0], color=p.col, linestyle='-', lw=.75) for p in p_env.plots] # with data: p_env.plots[1:]]
     #legend1 = plt.legend(custom_lines, [p.title for p in p_env.plots], loc='upper left', frameon = False)  # with data: [p.title for p in p_env.plots[1:]], loc='upper right', frameon = False)
     #ax1.add_artist(legend1)
-    ax1.legend(loc='upper left', title=r'anti-$k_T$ jets, $R=0.6$, $Q_0 =$ 20 GeV, $p_{\perp 1(2)} > 60(50)$ GeV', frameon=False)
+    ax1.legend(loc='upper left', title=r'anti-$k_T$ jets, $R=0.4$, $p_{\perp} > 60$ GeV, $\sqrt{s}= 13$ TeV, $y_j<4.5$', frameon=False)
     ax1.get_legend()._legend_box.align = "left"
     plt.savefig(outputDirectory+Title+".pdf", bbox_inches="tight")
 
    # plt.show()
+
+def plot_scale_bands(plots, ax1, ax2, pts, x_errors, **kwargs):
+    """Plots a single histogram with scale variation bands"""
+    pts=[]
+    new_bins = plots[0].Xh[:]
+    new_bins.insert(0, plots[0].Xl[0])
+    x_errors=[]
+    y_minmax=[]
+    data=plots[0]
+    for key, value in kwargs.items():
+        if key == 'data':
+            data=value
+    for j in range(0, len(new_bins)-1):
+        pts.append((new_bins[j+1]+new_bins[j])/2.)
+        x_errors.append((new_bins[j+1]-new_bins[j])/2.)
+    # plot data
+    for p in plots:
+        if plots.index(p) == 0:
+            for j in range(0, len(new_bins)-1):
+                y_minmax.append([p.Y[j], p.Y[j]])
+            ax1.errorbar(pts, [z for z in p.Y], xerr = x_errors, yerr = (p.errsM, p.errsP), fmt = '.', color = p.col, markersize='0.01', linewidth = .75, label = p.title)
+            ax2.errorbar(pts, [(x+eps)/(y+eps) for x, y in zip(p.Y, data.Y)], xerr = x_errors, yerr = ([(x+eps)/(y+eps) for x, y in zip(p.errsM, data.Y)], [(x+eps)/(y+eps) for x, y in zip(p.errsP, data.Y)]),
+                    fmt = '.', markersize='0.01', color = p.col, linewidth = .75, label = p.title)
+            ax1.step(p.Xl, [z for z in p.Y], where = 'post', color=p.col, linewidth = .25, alpha=0.5, linestyle='-')
+            ax2.step(p.Xl, [(x+eps)/(y+eps) for x, y in zip(p.Y, data.Y)], where = 'post', color=p.col, linewidth = .25, alpha=0.5, linestyle='-')
+        else:
+            for j in range(0, len(new_bins)-1):
+                if (p.Y[j] < y_minmax[j][0]):
+                    y_minmax[j][0] = p.Y[j]
+                if (p.Y[j] > y_minmax[j][1]):
+                    y_minmax[j][1] = p.Y[j]
+
+    ax1.fill_between(plots[0].Xl, [y[0] for y in y_minmax], [y[1] for y in y_minmax], color=plots[0].col, step="post", alpha=0.5, linewidth=0)
+    ax1.fill_between([plots[0].Xl[-1],plots[0].Xh[-1]], y_minmax[-1][0],  y_minmax[-1][1], color=plots[0].col, step="pre", alpha=0.5, linewidth=0)
+    ax2.fill_between(plots[0].Xl, [x[0]/(y+eps) for x, y in zip(y_minmax, data.Y[:len(p.Y)])], [x[1]/(y+eps) for x, y in zip(y_minmax, data.Y[:len(p.Y)])],
+            color=plots[0].col, step="post", alpha=0.5, linewidth=0)
+    ax2.fill_between([plots[0].Xl[-1],plots[0].Xh[-1]], y_minmax[-1][0]/(data.Y[-1]+eps), y_minmax[-1][1]/(data.Y[-1]+eps), color=plots[0].col,
+            step="post", alpha=0.5, linewidth=0)
+
+    #custom_lines = [Line2D([0], [0], color=p.col, linestyle='-', lw=.75) for p in p_env.plots] # with data: p_env.plots[1:]]
+    #legend1 = plt.legend(custom_lines, [p.title for p in p_env.plots], loc='upper left', frameon = False)  # with data: [p.title for p in p_env.plots[1:]], loc='upper right', frameon = False)
+    #ax1.add_artist(legend1)
+    #ax1.legend(loc='upper left', title=r'anti-$k_T$ jets, $R=0.4$, $p_{\perp} > 30$ GeV', frameon=False)
+    #ax1.get_legend()._legend_box.align = "left"
+    #plt.savefig(outputDirectory+Title+".pdf", bbox_inches="tight")
+    return ax1, ax2
+
 
 def plot_stacked(p_env_l, step, xLab, yLab, Title, name_marks, bin_marks, bin_corr, xTup):
     """Plots histograms on top of each other, separated by a user-input step"""
