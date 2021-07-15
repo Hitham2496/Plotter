@@ -8,16 +8,12 @@ Plotting routine for .dat files created by rivet-mkhtml
 
 from random import * # random numbers
 import os, subprocess # to check and create directories
-import math # python math
 import numpy as np # numerical python
-import scipy # scientific python
-from scipy import optimize # for numerical solution of equations
 from matplotlib import pyplot as plt # plotting
 import matplotlib.gridspec as gridspec # more plotting
 from matplotlib.ticker import (MultipleLocator, LogLocator) # even more plotting
 from matplotlib.lines import Line2D # yet more plotting
 import argparse
-import copy
 from itertools import groupby
 
 outputDirectory = 'plots'
@@ -56,7 +52,7 @@ class plot_env:
     def addPlot(self, p):
         self.plots.append(p)
 
-    @property 
+    @property
     def plotList(self):
         return [j.title for j in self.plots]
 
@@ -69,23 +65,23 @@ class plot_env:
         graph, ax = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False, gridspec_kw = {'height_ratios':[2.5, 1]}, figsize=(6,6))
         if (self.ratio!=1):
             graph, ax = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False, figsize=(6,6))
-    
+
             ax.set_ylabel(yLab)
             ax.set_ylabel(xLab)
             ax.set_xlim(bins[0], bins[-1])
             ax.set_ylim(yTup[0], yTup[1])
-    
+
             ax.yaxis.set_ticks_position('both')
             ax.xaxis.set_ticks_position('both')
             ax.xaxis.set_major_locator(MultipleLocator(xTup[0]))
             ax.xaxis.set_minor_locator(MultipleLocator(xTup[1]))
-    
+
             if(self.logY == 1):
                 ax.set_yscale('log')
             else:
                 ax.yaxis.set_minor_locator(MultipleLocator(0.5))
                 ax.yaxis.set_minor_locator(MultipleLocator(0.1))
-    
+
         else:
             ax[0].set_ylabel(yLab)
             ax[1].set_ylabel("Ratio")
@@ -93,12 +89,12 @@ class plot_env:
             ax[1].set_xlim(bins[0], bins[-1])
             ax[0].set_ylim(yTup[0], yTup[1])
             ax[1].set_ylim(0.5,1.5)
-    
+
             ax[0].yaxis.set_ticks_position('both')
             ax[0].xaxis.set_ticks_position('both')
             ax[1].xaxis.set_major_locator(MultipleLocator(xTup[0]))
             ax[1].xaxis.set_minor_locator(MultipleLocator(xTup[1]))
-    
+
             ax[1].yaxis.set_ticks_position('both')
             ax[1].xaxis.set_ticks_position('both')
             ax[1].yaxis.set_minor_locator(MultipleLocator(0.05))
@@ -110,10 +106,10 @@ class plot_env:
             else:
                 ax[0].yaxis.set_minor_locator(MultipleLocator(0.5))
                 ax[0].yaxis.set_minor_locator(MultipleLocator(0.1))
-    
+
         return graph, ax
 
-    @property 
+    @property
     def n_plots(self):
         return len(self.plots)
 
@@ -209,6 +205,8 @@ def sort_env(p_env, sv_list):
     scale_vars = []
     rest = []
     j=0
+    if(sv_list==0):
+        return 0, p_env.plots
     while j < len(p_env.plots):
         if (j in sv_list):
             scale_vars.append([p_env.plots[j], p_env.plots[j+1], p_env.plots[j+2]])
@@ -219,7 +217,7 @@ def sort_env(p_env, sv_list):
     return scale_vars, rest
 
 
-def plot_single(p_env, xLab, yLab, Title, xTup, yTup):
+def plot_single(p_env, xLab, yLab, Title, xTup, yTup, sv_list=0):
     """Plots a single histogram"""
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
@@ -244,15 +242,17 @@ def plot_single(p_env, xLab, yLab, Title, xTup, yTup):
   #          #        fmt = '.', markersize='5', color = "black", linewidth = .75, label = r'ATLAS: arXiv/1407.5756 $\sqrt{s}=7$ TeV')
   #      else:
 
-    sv,rest = sort_env(p_env,[0])
+    sv,rest = sort_env(p_env,sv_list)
     ax2=0
-    if (p_env.ratio==1):
-        ax2=ax[1]
-        for pl in sv:
-            ax[0], ax2 = plot_scale_bands(pl, ax[0], ax2, pts, x_errors, data=sv[0][0])
-    else:
-        for pl in sv:
-            ax, ax2 = plot_scale_bands(pl, ax, ax2, pts, x_errors, data=sv[0][0])
+    if (sv!=0):
+        if (p_env.ratio==1):
+            ax2=ax[1]
+            for pl in sv:
+                ax[0], ax2 = plot_scale_bands(pl, ax[0], ax2, pts, x_errors, data=sv[0][0])
+        else:
+            for pl in sv:
+                ax, ax2 = plot_scale_bands(pl, ax, ax2, pts, x_errors, data=sv[0][0])
+
     for p in rest:
         if (p_env.ratio!=1):
             ax.step(p.Xl, [z for z in p.Y], where = 'post', color=p.col, linewidth = .75, label=p.title, linestyle='-')
@@ -266,7 +266,7 @@ def plot_single(p_env, xLab, yLab, Title, xTup, yTup):
                  yerr = ([x/(y+eps) for x, y in zip(p.errsM, p.Y)],[x/(y+eps) for x, y in zip(p.errsP, p.Y)]), color=p.col, fmt = '', linewidth = 1., ls = 'none')
 
 
-    #custom_lines = [Line2D([0], [0], color=p.col, linestyle='-', lw=.75) for p in p_env.plots] # with data: p_env.plots[1:]]  
+    #custom_lines = [Line2D([0], [0], color=p.col, linestyle='-', lw=.75) for p in p_env.plots] # with data: p_env.plots[1:]]
     if (p_env.ratio!=1):
         ax.legend(loc='lower center', title=r'$pp\rightarrow jj$ at $\sqrt{s}= 13$ TeV'+'\n'+r'anti-$k_T$ jets, $R=0.4$, $p_{\perp} > 60$ GeV, $y_j<4.4$, $H_{T2}>250$ GeV', frameon=False)
         ax.get_legend()._legend_box.align = "left"
@@ -341,7 +341,7 @@ def plot_stacked(p_env_l, step, xLab, yLab, Title, name_marks, bin_marks, bin_co
     ax1.set_ylim(1e-8,1e9)
     #if(p_env_l[0].logY == 1):
     ax1.set_yscale('log')
-    
+
     ax1.yaxis.set_ticks_position('both')
     ax1.xaxis.set_ticks_position('both')
     ax1.xaxis.set_major_locator(MultipleLocator(xTup[0]))
@@ -368,7 +368,7 @@ def plot_stacked(p_env_l, step, xLab, yLab, Title, name_marks, bin_marks, bin_co
                 #if(p.errs == 1):
                 ax1.errorbar(pts, [z*10**(-q*step) for z in p.Y], xerr = x_errors, yerr = ([E*10**(-q*step) for E in p.errsM], [E*10**(-q*step) for E in p.errsP]),
                         color=p.col, fmt = '', linewidth = .75, ls = 'none')
-    
+
     custom_lines = [Line2D([0], [0], color=p.col, lw=.75) for p in p_env.plots[1:]]
     legend1 = plt.legend(custom_lines, [p.title for p in p_env.plots[1:]], loc='upper right', frameon = False)
     legend2 = plt.legend((bin_marks), (bin_corr), loc='upper left', frameon = False)
@@ -392,7 +392,7 @@ def plot_stacked_ratio(p_env_l, xLab, yLab, Title, name_marks, bin_marks, bin_co
     ax[1].set_ylabel(yLab)
     ax[-1].set_xlabel(xLab)
     ax[1].set_xlim(bins[0], bins[-1])
-    
+
     for q in range(0, len(p_env_l)):
         pts=[]
         ax[-q-1].yaxis.set_ticks_position('both')
