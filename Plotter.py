@@ -229,50 +229,6 @@ def plot_single(p_env, xLab, yLab, Title, xTup, yTup):
 
     graph, ax = p_env.get_axes(xLab, yLab, Title, bins, xTup, yTup)
 
-    if (p_env.ratio!=1):
-        graph, ax = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False, figsize=(6,6))
-
-        ax.set_ylabel(yLab)
-        ax.set_ylabel(xLab)
-        ax.set_xlim(bins[0], bins[-1])
-        ax.set_ylim(yTup[0], yTup[1])
-
-        ax.yaxis.set_ticks_position('both')
-        ax.xaxis.set_ticks_position('both')
-        ax.xaxis.set_major_locator(MultipleLocator(xTup[0]))
-        ax.xaxis.set_minor_locator(MultipleLocator(xTup[1]))
-
-        if(p_env.logY == 1):
-            ax.set_yscale('log')
-        else:
-            ax.yaxis.set_minor_locator(MultipleLocator(0.5))
-            ax.yaxis.set_minor_locator(MultipleLocator(0.1))
-
-    else:
-        ax[0].set_ylabel(yLab)
-        ax[1].set_ylabel("Ratio")
-        ax[1].set_xlabel(xLab)
-        ax[1].set_xlim(bins[0], bins[-1])
-        ax[0].set_ylim(yTup[0], yTup[1])
-        ax[1].set_ylim(0.5,1.5)
-
-        ax[0].yaxis.set_ticks_position('both')
-        ax[0].xaxis.set_ticks_position('both')
-        ax[1].xaxis.set_major_locator(MultipleLocator(xTup[0]))
-        ax[1].xaxis.set_minor_locator(MultipleLocator(xTup[1]))
-
-        plt.subplots_adjust(hspace=0)
-        if(p_env.logY == 1):
-            ax[0].set_yscale('log')
-        else:
-            ax[0].yaxis.set_minor_locator(MultipleLocator(0.5))
-            ax[0].yaxis.set_minor_locator(MultipleLocator(0.1))
-
-        ax[1].yaxis.set_minor_locator(MultipleLocator(0.05))
-        ax[1].yaxis.set_major_locator(MultipleLocator(0.1))
-        ax[1].yaxis.set_ticks_position('both')
-        ax[1].xaxis.set_ticks_position('both')
-
     pts=[]
     new_bins = p_env.plots[0].Xh[:]
     new_bins.insert(0, p_env.plots[0].Xl[0])
