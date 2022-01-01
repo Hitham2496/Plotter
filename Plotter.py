@@ -21,25 +21,25 @@ import argparse
 import copy
 from itertools import groupby
 
-outputDirectory = 'plots'
+outputDirectory = 'plots/'
 
-parser = argparse.ArgumentParser(
-        description="Usage: ./Plotter.py -f [INPUT .dat FILES] [options]")
-parser.add_argument('--files', '-f', nargs="+", type=str, default="Rivet.yoda")
-parser.add_argument('--runcard', '-r', type=str, default="Runcard.py")
-parser.add_argument('--output', '-o', default=outputDirectory)
-parser.add_argument('--debug', '-d')
-
-args = parser.parse_args()
+#parser = argparse.ArgumentParser(
+#        description="Usage: ./Plotter.py -f [INPUT .dat FILES] [options]")
+#parser.add_argument('--files', '-f', nargs="+", type=str, default="Rivet.yoda")
+#parser.add_argument('--runcard', '-r', type=str, default="Runcard.py")
+#parser.add_argument('--output', '-o', default=outputDirectory)
+#parser.add_argument('--debug', '-d')
+#
+#args = parser.parse_args()
 
 eps = 1e-20
 
-if not args.files:   # if filename is not given
-    parser.error('file(s) not given')
-
-# set command line arguments
-debug = args.debug
-outputDirectory = args.output + '/'
+#if not args.files:   # if filename is not given
+#    parser.error('file(s) not given')
+#
+## set command line arguments
+#debug = args.debug
+#outputDirectory = args.output + '/'
 
 
 class plot_env:
@@ -66,7 +66,7 @@ class plot_env:
     def clearPlots(self):
         self.plots = []
 
-    def get_axes(self, xLab, yLab, Title, bins, xTup, yTup):
+    def get_axes(self, Title, bins, xTup, yTup, xLab="", yLab="") :
         """Returns graph and axes for plotting"""
 
         graph, ax = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False,
@@ -76,8 +76,14 @@ class plot_env:
             graph, ax = plt.subplots(nrows=1, ncols=1, sharex=True,
                                      sharey=False, figsize=(6, 6))
 
-            ax.set_ylabel(yLab)
-            ax.set_ylabel(xLab)
+            if (xLab != ""):
+                ax.set_xlabel(xLab)
+            else:
+                ax.set_xlabel(self.xLabel)
+            if (yLab != ""):
+                ax.set_ylabel(yLab)
+            else:
+                ax.set_ylabel(self.yLabel)
             ax.set_xlim(bins[0], bins[-1])
             ax.set_ylim(yTup[0], yTup[1])
 
@@ -88,17 +94,25 @@ class plot_env:
 
             if(self.logY == 1):
                 ax.set_yscale('log')
-            else:
-                ax.yaxis.set_minor_locator(MultipleLocator(0.5))
-                ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+           # else:
+           #     ax.yaxis.set_minor_locator(MultipleLocator(1))
+           #     ax.yaxis.set_major_locator(MultipleLocator(5))
 
         else:
-            ax[0].set_ylabel(yLab)
+
+            if (xLab != ""):
+                ax[1].set_xlabel(xLab)
+            else:
+                ax[1].set_xlabel(self.xLabel)
+            if (yLab != ""):
+                ax[0].set_ylabel(yLab)
+            else:
+                ax[0].set_ylabel(self.yLabel)
+
             ax[1].set_ylabel("Ratio")
-            ax[1].set_xlabel(xLab)
             ax[1].set_xlim(bins[0], bins[-1])
             ax[0].set_ylim(yTup[0], yTup[1])
-            ax[1].set_ylim(0.5, 1.5)
+            ax[1].set_ylim(0., 2.)
 
             ax[0].yaxis.set_ticks_position('both')
             ax[0].xaxis.set_ticks_position('both')
@@ -107,15 +121,15 @@ class plot_env:
 
             ax[1].yaxis.set_ticks_position('both')
             ax[1].xaxis.set_ticks_position('both')
-            ax[1].yaxis.set_minor_locator(MultipleLocator(0.05))
-            ax[1].yaxis.set_major_locator(MultipleLocator(0.1))
+            ax[1].yaxis.set_minor_locator(MultipleLocator(0.1))
+            ax[1].yaxis.set_major_locator(MultipleLocator(0.2))
 
             plt.subplots_adjust(hspace=0)
             if(self.logY == 1):
                 ax[0].set_yscale('log')
-            else:
-                ax[0].yaxis.set_minor_locator(MultipleLocator(0.5))
-                ax[0].yaxis.set_minor_locator(MultipleLocator(0.1))
+           # else:
+           #     ax[0].yaxis.set_minor_locator(MultipleLocator(1))
+           #     ax[0].yaxis.set_major_locator(MultipleLocator(5))
 
         return graph, ax
 
@@ -137,6 +151,9 @@ class dataset:
         self.errs = 0
         self.__dict__.update((k, v)
                              for k, v in kwargs.items() if k in allowed_keys)
+
+    def integral(self):
+        return "{:.3f}".format(np.sum(((np.array(self.Xh)-np.array(self.Xl))*np.array(self.Y))))
 
 
 def unpack(filename):
@@ -198,9 +215,9 @@ def unpack(filename):
             for j in range(1, len(TEMP[arr_p.index('Title')][0])):
                 t += ' '
                 t += TEMP[arr_p.index('Title')][0][j]
-        n = 1.
+        no = 1.
         if ('Scale' in arr_p):
-            n = arr_d[arr_p.index('Scale')]
+            no = arr_d[arr_p.index('Scale')]
         c = 'Black'
         if (t != 'Data'):
             c = arr_d[arr_p.index('LineColor')]
@@ -208,10 +225,18 @@ def unpack(filename):
             xl.append(float(res[n][0][0]))
             xh.append(float(res[n][0][1]))
             y.append(float(res[n][0][2]))
-            errsm.append(0.)  # float(res[n][0][3]))
-            errsp.append(0.)  # float(res[n][0][4]))
+            if (t == 'Data'):
+                errsm.append(float(res[n][0][3]))
+                errsp.append(float(res[n][0][4]))
+            else:
+                # if you want errors (the NLO ones are massive) copy
+                # lines 229 and 230 here and remove 234 and 235
+                errsm.append(float(res[n][0][3]))
+                errsp.append(float(res[n][0][4]))
+                #errsm.append(0)
+                #errsp.append(0)
         p.addPlot(dataset(t, xl, xh, y, col=c, errs=0,
-                          errsM=errsm, errsP=errsp, norm=n))
+                          errsM=errsm, errsP=errsp, norm=no))
     return p
 
 
@@ -234,15 +259,15 @@ def sort_env(p_env, sv_list):
     return scale_vars, rest
 
 
-def plot_single(p_env, xLab, yLab, Title, xTup, yTup, sv_list=0):
-    """Plots a single histogram"""
+def plot_single(p_env, Title, xTup, yTup, sv_list=0, xLab="", yLab=""):
+    """Plots all of the distributions corresponding to a single histogram"""
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
 
     bins = p_env.plots[0].Xl[:]
     bins.append(p_env.plots[0].Xh[-1])
 
-    graph, ax = p_env.get_axes(xLab, yLab, Title, bins, xTup, yTup)
+    graph, ax = p_env.get_axes(Title, bins, xTup, yTup, xLab, yLab)
 
     pts = []
     new_bins = p_env.plots[0].Xh[:]
@@ -251,69 +276,59 @@ def plot_single(p_env, xLab, yLab, Title, xTup, yTup, sv_list=0):
     for j in range(0, len(new_bins)-1):
         pts.append((new_bins[j+1] + new_bins[j]) / 2.)
         x_errors.append((new_bins[j+1] - new_bins[j]) / 2.)
-    # plot data
-#    for p in p_env.plots:
-#        if p.title == "Data":
-#            ax1.errorbar(pts, [z for z in p.Y], xerr = x_errors,
-#                         yerr = (p.errsM, p.errsP), fmt = '.',
-#                         color = "black", markersize='5', linewidth = .75,
-#                         label = r'Data')
-#            ax2.errorbar(pts, [(x+eps)/(y+eps) for x, y in zip(p.Y, p.Y)],
-#                               xerr = x_errors, yerr = ([(x+eps)/(y+eps)
-#                               for x, y in zip(p.errsM, p.Y)],[(x+eps)/(y+eps)
-#                               for x, y in zip(p.errsP, p.Y)]),
-#                         fmt = '.', markersize='5', color = "black",
-#                         linewidth = .75,
-#                         label = r'ATLAS: arXiv/1407.5756 $\sqrt{s}=7$ TeV')
-#        else:
 
     sv, rest = sort_env(p_env, sv_list)
     ax2 = 0
+    print("Plotting %s to %s" % (Title, outputDirectory+Title+".pdf"))
     if (sv != 0):
         if (p_env.ratio == 1):
             ax2 = ax[1]
             for pl in sv:
-                ax[0], ax2 = plot_scale_bands(pl, ax[0], ax2, pts,
-                                              x_errors, data=sv[0][0])
+                ax[0], ax2 = plot_scale_bands(pl, ax[0], ax2, pts, x_errors, data=p_env.plots[0]) #data=sv[0][0])
         else:
             for pl in sv:
-                ax, ax2 = plot_scale_bands(pl, ax, ax2, pts,
-                                           x_errors, data=sv[0][0])
+                ax, ax2 = plot_scale_bands(pl, ax, ax2, pts, x_errors, data=p_env.plots[0]) #data=sv[0][0])
 
     for p in rest:
         if (p_env.ratio != 1):
-            ax.step(p.Xl, [z for z in p.Y], where='post', color=p.col,
-                    linewidth=.75, label=p.title, linestyle='-')
-            ax.errorbar(pts, [z for z in p.Y], xerr=x_errors,
-                        yerr=(p.errsM, p.errsP), color=p.col, fmt='',
-                        linewidth=.75, ls='none')
+            if (p.title == "Data"):
+                ax.errorbar(pts, [z for z in p.Y], xerr = x_errors,
+                             yerr = (p.errsM, p.errsP), fmt = '.',
+                             color = "black", markersize='5', linewidth = .75,
+                             label = r'Data'+" : "+str(p.integral())+" fb")
+            else:
+                ax.step(p.Xl, [z for z in p.Y], where='post', color=p.col, linewidth=.75, label=p.title+" : "+str(p.integral())+" fb", linestyle='-')
+                ax.errorbar(pts, [z for z in p.Y], xerr=x_errors, yerr=(p.errsM, p.errsP), color=p.col, fmt='',
+                            linewidth=.75, ls='none')
         else:
-            ax[0].step(p.Xl, [z for z in p.Y], where='post', color=p.col,
-                       linewidth=.75, label=p.title, linestyle='-')
-            ax[0].errorbar(pts, [z for z in p.Y], xerr=x_errors,
-                           yerr=(p.errsM, p.errsP), color=p.col, fmt='',
-                           linewidth=.75, ls='none')
-            ax[1].step(p.Xl,
-                       [x/(y+eps) for
-                        x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])],
-                       where='post', color=p.col, linewidth=.75, label=p.title)
+            if (p.title == "Data"):
+                ax[0].errorbar(pts, [z for z in p.Y], xerr = x_errors,
+                             yerr = (p.errsM, p.errsP), fmt = '.',
+                             color = "black", markersize='5', linewidth = .75,
+                             label = r'ATLAS: arXiv/1407.4222'+" : "+str(p.integral())+" fb")
+                ax[1].errorbar(pts, [(x+eps)/(y+eps) for x, y in zip(p.Y, p.Y)],
+                                   xerr = x_errors, yerr = ([(x+eps)/(y+eps)
+                                   for x, y in zip(p.errsM, p.Y)],[(x+eps)/(y+eps)
+                                   for x, y in zip(p.errsP, p.Y)]),
+                             fmt = '.', markersize='5', color = "black",
+                             linewidth = .75,
+                             label = r'ATLAS: arXiv/1407.4222'+" : "+str(p.integral())+" fb")
+            else:
+                ax[0].step(p.Xl, [z for z in p.Y], where='post', color=p.col, linewidth=.75, label=p.title+" : "+str(p.integral())+" fb", linestyle='-')
+                ax[0].errorbar(pts, [z for z in p.Y], xerr=x_errors, yerr=(p.errsM, p.errsP), color=p.col, fmt='',
+                               linewidth=.75, ls='none')
+                ax[1].step(p.Xl,
+                           [x/(y+eps) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], where='post',
+                           color=p.col, linewidth=.75, label=p.title)
+                ax[1].errorbar(pts, [x/(y+eps) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], xerr=x_errors,
+                               yerr=([x/(y+eps) for x, y in zip(p.errsM, p.Y)], [x/(y+eps) for x, y in zip(p.errsP, p.Y)]),
+                               color=p.col, fmt='', linewidth=1., ls='none')
 
-        # if(p_env.errs == 1):
-            ax[1].errorbar(pts,
-                           [x/(y+eps) for
-                            x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])],
-                           xerr=x_errors,
-                           yerr=([x/(y+eps) for x, y in zip(p.errsM, p.Y)],
-                                 [x/(y+eps) for x, y in zip(p.errsP, p.Y)]),
-                           color=p.col, fmt='', linewidth=1., ls='none')
-
-    # custom_lines = [Line2D([0], [0], color=p.col, linestyle='-', lw=.75)
-    #                 for p in p_env.plots] # with data: p_env.plots[1:]]
     if (p_env.ratio != 1):
-        ax.legend(loc='lower center', title=r'$pp\rightarrow jj$ at $\sqrt{s}=13$ TeV'+'\n'+r'anti-$k_T$ jets, $R=0.4$, $p_{\perp} > 60$ GeV, $y_j<4.4$, $H_{T2}>250$ GeV', frameon=False)
+        ax.legend(loc='upper right', title=r'$pp\rightarrow jj$ at $\sqrt{s}= 7$ TeV'+'\n'+r'$\overline{k_T}$ jets, $R=0.4$, $p_{T} > 60$ GeV, $y_j<2.8$', frameon=False)
         ax.get_legend()._legend_box.align = "left"
     else:
-        ax[0].legend(loc='lower center', title=r'$pp\rightarrow jj$ at $\sqrt{s}= 13$ TeV'+'\n'+r'anti-$k_T$ jets, $R=0.4$, $p_{\perp} > 60$ GeV, $y_j<4.4$, $H_{T2}>250$ GeV', frameon=False)
+        ax[0].legend(loc='upper right', title=r'$pp\rightarrow jj$ at $\sqrt{s}= 7$ TeV'+'\n'+r'$\overline{k_T}$ jets, $R=0.4$, $p_{T} > 60$ GeV, $y_j<2.8$', frameon=False)
         ax[0].get_legend()._legend_box.align = "left"
     plt.savefig(outputDirectory+Title+".pdf", bbox_inches="tight")
 
@@ -338,36 +353,37 @@ def plot_scale_bands(plots, ax1, ax2, pts, x_errors, **kwargs):
 
     # plot data
     for p in plots:
+        xa = 1
         if plots.index(p) == 0:
             for j in range(0, len(new_bins)-1):
-                y_minmax.append([p.Y[j], p.Y[j]])
-            ax1.errorbar(pts, [z for z in p.Y],
+                y_minmax.append([p.Y[j]*xa, p.Y[j]*xa])
+            ax1.errorbar(pts, [z*xa for z in p.Y],
                          xerr=x_errors, yerr=(p.errsM, p.errsP),
                          fmt='.', color=p.col, markersize='0.01',
-                         linewidth=.75, label=p.title)
-            ax1.step(p.Xl, [z for z in p.Y], where='post', color=p.col,
+                         linewidth=.75, label=p.title+" : "+str(p.integral())+" fb")
+            ax1.step(p.Xl, [z*xa for z in p.Y], where='post', color=p.col,
                      linewidth=.25, alpha=0.5, linestyle='-')
             if (ax2 != 0):
                 ax2.errorbar(pts,
-                             [(x+eps)/(y+eps) for x, y in zip(p.Y, data.Y)],
-                             xerr=x_errors, yerr=([(x+eps)/(y+eps)
+                             [(x*xa+eps)/(y+eps) for x, y in zip(p.Y, data.Y)],
+                             xerr=x_errors, yerr=([(x*xa+eps)/(y+eps)
                                                   for x, y in
                                                   zip(p.errsM, data.Y)],
-                             [(x+eps)/(y+eps)
+                             [(x*xa+eps)/(y+eps)
                               for x, y in zip(p.errsP, data.Y)]), fmt='.',
                              markersize='0.01', color=p.col, linewidth=.75,
-                             label=p.title)
+                             label=p.title+" : "+str(p.integral())+" fb")
 
-                ax2.step(p.Xl, [(x+eps)/(y+eps) for x, y in zip(p.Y, data.Y)],
+                ax2.step(p.Xl, [(x*xa+eps)/(y+eps) for x, y in zip(p.Y, data.Y)],
                                 where='post', color=p.col, linewidth=.25,
                                 alpha=0.5, linestyle='-')
 
         else:
             for j in range(0, len(new_bins)-1):
-                if (p.Y[j] < y_minmax[j][0]):
-                    y_minmax[j][0] = p.Y[j]
-                if (p.Y[j] > y_minmax[j][1]):
-                    y_minmax[j][1] = p.Y[j]
+                if (p.Y[j]*xa < y_minmax[j][0]):
+                    y_minmax[j][0] = p.Y[j]*xa
+                if (p.Y[j]*xa > y_minmax[j][1]):
+                    y_minmax[j][1] = p.Y[j]*xa
 
     ax1.fill_between(plots[0].Xl, [y[0] for y in y_minmax],
                      [y[1] for y in y_minmax], color=plots[0].col,
@@ -391,102 +407,31 @@ def plot_scale_bands(plots, ax1, ax2, pts, x_errors, **kwargs):
 
     return ax1, ax2
 
+def main():
+   # plot_single(unpack("d01-x01-y01.dat"), "d01-x01-y01", (50,10), (2e-3,1e1), [1,4])
+   # plot_single(unpack("d02-x01-y01.dat"), "d02-x01-y01", (0.5,0.1), (0.01,49), [1,4])
+    plot_single(unpack("d03-x01-y01.dat"), "d03-x01-y01", (1.,0.5), (0.01,38), [1,4])
+   # #plot_single(unpack("d04-x01-y01.dat"), "d04-x01-y01", (1.,0.5), (0.01,25), [1,4]) # for this one don't forget to change the legend text on the plot (line 329) !!!
+    plot_single(unpack("d06-x01-y01.dat"), "d06-x01-y01", (0.5,0.1), (0.01,19), [1,4])
+    plot_single(unpack("d08-x01-y01.dat"), "d08-x01-y01", (20,5), (5e-3,1.5e0), [1,4])
+    plot_single(unpack("d09-x01-y01.dat"), "d09-x01-y01", (1,0.5), (5e-3,9e0), [1,4])
+    plot_single(unpack("d10-x01-y01.dat"), "d10-x01-y01", (1,0.5), (5e-2,1.1e2), [1,4])
+   # plot_single(unpack("d11-x01-y01.dat"), "d11-x01-y01", (0.1,0.02), (-19.9,147), [1,4])
+   # plot_single(unpack("d12-x01-y01.dat"), "d12-x01-y01", (0.1,0.02), (0.01,115), [1,4])
+    plot_single(unpack("d13-x01-y01.dat"), "d13-x01-y01", (1,0.5), (-1,14), [1,4])
+   # plot_single(unpack("d14-x01-y01.dat"), "d14-x01-y01", (20,5), (2e-2,4e0), [1,4])
+   # plot_single(unpack("d15-x01-y01.dat"), "d15-x01-y01", (0.5,0.1), (-5,59), [1,4])
+    plot_single(unpack("d18-x01-y01.dat"), "d18-x01-y01", (0.5,0.1), (-0.5,6.1), [1,4])
+    plot_single(unpack("d19-x01-y01.dat"), "d19-x01-y01", (20,5), (2e-3,5e-1), [1,4])
+    plot_single(unpack("d20-x01-y01.dat"), "d20-x01-y01", (200,50), (2e-4,5e-2), [1,4])
+    plot_single(unpack("d21-x01-y01.dat"), "d21-x01-y01", (20,5), (1.1e-3,3e0), [1,4])
+   # plot_single(unpack("d22-x01-y01.dat"), "d22-x01-y01", (0.1,0.02), (-0.1,95), [1,4], xLab=r"$|\textrm{cos}\theta^\star|$ ($p^{\gamma \gamma}_T<80$ GeV)", yLab=r"$d\sigma_{\textrm{fid}} / d |\textrm{cos} \theta^\star|$ [fb]")
+   # plot_single(unpack("d22-x01-y02.dat"), "d22-x01-y02", (0.1,0.02), (-4,16), [1,4], xLab=r"$|\textrm{cos}\theta^\star|$ ($80<p^{\gamma \gamma}_T<200$ GeV)", yLab=r"$d\sigma_{\textrm{fid}} / d |\textrm{cos} \theta^\star|$ [fb]")
+   # plot_single(unpack("d22-x01-y03.dat"), "d22-x01-y03", (0.1,0.02), (-0.1,2.6), [1,4], xLab=r"$|\textrm{cos}\theta^\star|$ ($p^{\gamma \gamma}_T>200$ GeV)", yLab=r"$d\sigma_{\textrm{fid}} / d |\textrm{cos} \theta^\star|$ [fb]")
+    plot_single(unpack("d23-x01-y02.dat"), "d23-x01-y02", (50,10), (-0.02,0.39), [1,4], xLab=r"$p^{\gamma \gamma}_{T}$ ($N_\textrm{jets}=1$) [GeV]", yLab=r"$d\sigma_{\textrm{fid}} / d p^{\gamma \gamma}_{T}$ [fb/GeV]")
+    plot_single(unpack("d23-x01-y03.dat"), "d23-x01-y03", (50,10), (-0.005,0.13), [1,4], xLab=r"$p^{\gamma \gamma}_{T}$ ($N_\textrm{jets}\geq 2$) [GeV]", yLab=r"$d\sigma_{\textrm{fid}} / d p^{\gamma \gamma}_{T}$ [fb/GeV]")
+    plot_single(unpack("d24-x01-y01.dat"), "d24-x01-y01", (20,5), (0.01,1.2), [1,4], xLab=r"$p_{T,j_1}$ ($N_\textrm{jets}=1$) [GeV]", yLab=r"$d\sigma_{\textrm{fid}} / d p_{T,j_1}$ [fb/GeV]")
+    plot_single(unpack("d30-x01-y01.dat"), "d30-x01-y01", (1,0.2), (0.2,100), [1,4], xLab=r"Region ID"r" (baseline, $N_\textrm{jets}\geq 1,2,3$, VBF)", yLab=r"$\sigma_{\textrm{fid}}$ [fb]")
 
-def plot_stacked(p_env_l, step, xLab, yLab, Title, name_marks, bin_marks, bin_corr, xTup):
-    """Plots histograms on top of each other, separated by a user-input step"""
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='serif')
-    graph, ax1 = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False, figsize=(6,9))
-
-    bins = p_env_l[0].plots[0].Xl
-    bins.append(p_env_l[0].plots[0].Xh[-1])
-    ax1.set_ylabel(yLab)
-    ax1.set_xlabel(xLab)
-    ax1.set_xlim(bins[0], bins[-1])
-    ax1.set_ylim(1e-8,1e9)
-    #if(p_env_l[0].logY == 1):
-    ax1.set_yscale('log')
-
-    ax1.yaxis.set_ticks_position('both')
-    ax1.xaxis.set_ticks_position('both')
-    ax1.xaxis.set_major_locator(MultipleLocator(xTup[0]))
-    ax1.xaxis.set_minor_locator(MultipleLocator(xTup[1]))
-    #ax1.yaxis.set_minor_locator(MultipleLocator(0.2))
-    ax1.yaxis.set_minor_locator(LogLocator(base=10, subs=(10,)))
-
-    for q in range(0, len(p_env_l)):
-        pts=[]
-        p_env = p_env_l[q]
-        new_bins = p_env.plots[0].Xh
-        new_bins.insert(0, p_env.plots[0].Xl[0])
-        x_errors=[]
-        for j in range(0, len(new_bins)-1):
-            pts.append((new_bins[j+1]+new_bins[j])/2.)
-            x_errors.append((new_bins[j+1]-new_bins[j])/2.)
-        # plot data
-        for p in p_env.plots:
-            if p.title == "Data":
-                ax1.errorbar(pts, [z*10**(-q*step) for z in p.Y], xerr = x_errors, yerr = ([E*10**(-q*step) for E in p.errsM], [E*10**(-q*step) for E in p.errsP]),
-                        fmt = name_marks[q], color = "black", markersize='5', linewidth = .75, label = r'Data')
-            else:
-                ax1.step(p.Xl, [z*10**(-q*step) for z in p.Y], where='post', color=p.col, linewidth = .75, label=p.title)
-                #if(p.errs == 1):
-                ax1.errorbar(pts, [z*10**(-q*step) for z in p.Y], xerr = x_errors, yerr = ([E*10**(-q*step) for E in p.errsM], [E*10**(-q*step) for E in p.errsP]),
-                        color=p.col, fmt = '', linewidth = .75, ls = 'none')
-
-    custom_lines = [Line2D([0], [0], color=p.col, lw=.75) for p in p_env.plots[1:]]
-    legend1 = plt.legend(custom_lines, [p.title for p in p_env.plots[1:]], loc='upper right', frameon = False)
-    legend2 = plt.legend((bin_marks), (bin_corr), loc='upper left', frameon = False)
-    ax1.add_artist(legend1)
-    ax1.add_artist(legend2)
-    plt.savefig(outputDirectory+Title+".pdf", bbox_inches="tight")
-
-    #plt.show()
-
-
-def plot_stacked_ratio(p_env_l, xLab, yLab, Title, name_marks, bin_marks, bin_corr, xTup, phrase):
-    """Plots histograms on top of each other, separated by a user-input step"""
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='serif')
-    graph, ax = plt.subplots(nrows=len(p_env_l)+1, ncols=1, sharex=True, sharey=False, figsize=(6,9))
-
-    bins = p_env_l[0].plots[0].Xl
-    bins.append(p_env_l[0].plots[0].Xh[-1])
-    ax[0].xaxis.set_visible(False)
-    ax[0].yaxis.set_visible(False)
-    ax[1].set_ylabel(yLab)
-    ax[-1].set_xlabel(xLab)
-    ax[1].set_xlim(bins[0], bins[-1])
-
-    for q in range(0, len(p_env_l)):
-        pts=[]
-        ax[-q-1].yaxis.set_ticks_position('both')
-        ax[-q-1].set_ylim(0.,2.)
-        ax[-q-1].xaxis.set_ticks_position('both')
-        ax[-q-1].xaxis.set_major_locator(MultipleLocator(xTup[0]))
-        ax[-q-1].xaxis.set_minor_locator(MultipleLocator(xTup[1]))
-        ax[-q-1].yaxis.set_minor_locator(MultipleLocator(0.2))
-        p_env = p_env_l[q]
-        new_bins = p_env.plots[0].Xh
-        new_bins.insert(0, p_env.plots[0].Xl[0])
-        x_errors=[]
-        for j in range(0, len(new_bins)-1):
-            pts.append((new_bins[j+1]+new_bins[j])/2.)
-            x_errors.append((new_bins[j+1]-new_bins[j])/2.)
-        # plot data
-        for p in p_env.plots:
-            if p.title == "Data":
-                ax[q+1].errorbar(pts, [(x+eps)/(y+eps) for x, y in zip(p.Y, p.Y)], xerr = x_errors, yerr = ([(x+eps)/(y+eps) for x, y in zip(p.errsM, p.Y)],[(x+eps)/(y+eps) for x, y in zip(p.errsP, p.Y)]),
-                        fmt = name_marks[q], markersize='5', color = "black", linewidth = .75, label = r'Data')
-            else:
-                 ax[q+1].step(p.Xl, [x/(y+eps) for x, y in zip(p.Y, p_env_l[q].plots[0].Y[:len(p.Y)])], where = 'post', color=p.col, linewidth = .75, label=p.title)
-            #    if(p.errs == 1):
-                 ax[q+1].errorbar(pts, [x/(y+eps) for x, y in zip(p.Y, p_env_l[q].plots[0].Y[:len(p.Y)])], xerr = x_errors,
-                         yerr = ([x/(y+eps) for x, y in zip(p.errsM, p.Y)],[x/(y+eps) for x, y in zip(p.errsP, p.Y)]), color=p.col, fmt = '', linewidth = 1., ls = 'none')
-
-    custom_lines = [Line2D([0], [0], color=p.col, lw=.75) for p in p_env.plots[1:]]
-    ax[0].legend(custom_lines, [p.title for p in p_env.plots[1:]], loc = "upper right", frameon = False)
-    ax[0].text(1.5*bins[0], .8, phrase, horizontalalignment='left', verticalalignment='top')
-    plt.savefig(outputDirectory+Title+".pdf", bbox_inches="tight")
-
-    #plt.show()
+if __name__ == "__main__":
+    main()
