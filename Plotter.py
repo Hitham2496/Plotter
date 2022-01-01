@@ -3,44 +3,19 @@
 """
 Plotting routine for .dat files created by rivet-mkhtml
 
-@author: hhassan
+@author: Hitham2496
 """
 
-from random import *  # random numbers
-import os
-import subprocess  # to check and create directories
-import math  # python math
 import numpy as np  # numerical python
-import scipy  # scientific python
-from scipy import optimize  # for numerical solution of equations
 from matplotlib import pyplot as plt  # plotting
-import matplotlib.gridspec as gridspec
-from matplotlib.ticker import (MultipleLocator, LogLocator)
-from matplotlib.lines import Line2D
-import argparse
-import copy
+from matplotlib.ticker import MultipleLocator
 from itertools import groupby
 
 outputDirectory = 'plots/'
-
-#parser = argparse.ArgumentParser(
-#        description="Usage: ./Plotter.py -f [INPUT .dat FILES] [options]")
-#parser.add_argument('--files', '-f', nargs="+", type=str, default="Rivet.yoda")
-#parser.add_argument('--runcard', '-r', type=str, default="Runcard.py")
-#parser.add_argument('--output', '-o', default=outputDirectory)
-#parser.add_argument('--debug', '-d')
-#
-#args = parser.parse_args()
-
+dataStr = r'Data'
+legendStr = r'Theoretical Predictions'
+printOuts = True
 eps = 1e-20
-
-#if not args.files:   # if filename is not given
-#    parser.error('file(s) not given')
-#
-## set command line arguments
-#debug = args.debug
-#outputDirectory = args.output + '/'
-
 
 class plot_env:
 
@@ -94,9 +69,6 @@ class plot_env:
 
             if(self.logY == 1):
                 ax.set_yscale('log')
-           # else:
-           #     ax.yaxis.set_minor_locator(MultipleLocator(1))
-           #     ax.yaxis.set_major_locator(MultipleLocator(5))
 
         else:
 
@@ -127,9 +99,6 @@ class plot_env:
             plt.subplots_adjust(hspace=0)
             if(self.logY == 1):
                 ax[0].set_yscale('log')
-           # else:
-           #     ax[0].yaxis.set_minor_locator(MultipleLocator(1))
-           #     ax[0].yaxis.set_major_locator(MultipleLocator(5))
 
         return graph, ax
 
@@ -225,16 +194,9 @@ def unpack(filename):
             xl.append(float(res[n][0][0]))
             xh.append(float(res[n][0][1]))
             y.append(float(res[n][0][2]))
-            if (t == 'Data'):
-                errsm.append(float(res[n][0][3]))
-                errsp.append(float(res[n][0][4]))
-            else:
-                # if you want errors (the NLO ones are massive) copy
-                # lines 229 and 230 here and remove 234 and 235
-                errsm.append(float(res[n][0][3]))
-                errsp.append(float(res[n][0][4]))
-                #errsm.append(0)
-                #errsp.append(0)
+            errsm.append(float(res[n][0][3]))
+            errsp.append(float(res[n][0][4]))
+
         p.addPlot(dataset(t, xl, xh, y, col=c, errs=0,
                           errsM=errsm, errsP=errsp, norm=no))
     return p
@@ -279,23 +241,28 @@ def plot_single(p_env, Title, xTup, yTup, sv_list=0, xLab="", yLab=""):
 
     sv, rest = sort_env(p_env, sv_list)
     ax2 = 0
-    print("Plotting %s to %s" % (Title, outputDirectory+Title+".pdf"))
+    
+    if printOuts: print("Plotting %s to %s" % (Title, outputDirectory+Title+".pdf"))
+
     if (sv != 0):
         if (p_env.ratio == 1):
             ax2 = ax[1]
             for pl in sv:
+                if printOuts: print("\tPlotting curve with scale uncertainty %s for %s" % (pl.title, Title))
                 ax[0], ax2 = plot_scale_bands(pl, ax[0], ax2, pts, x_errors, data=p_env.plots[0]) #data=sv[0][0])
         else:
             for pl in sv:
+                if printOuts: print("\tPlotting curve with scale uncertainty %s for %s" % (pl.title, Title))
                 ax, ax2 = plot_scale_bands(pl, ax, ax2, pts, x_errors, data=p_env.plots[0]) #data=sv[0][0])
 
     for p in rest:
+        if printOuts: print("\tPlotting curve %s for %s" % (pl.title, Title))
         if (p_env.ratio != 1):
             if (p.title == "Data"):
                 ax.errorbar(pts, [z for z in p.Y], xerr = x_errors,
                              yerr = (p.errsM, p.errsP), fmt = '.',
                              color = "black", markersize='5', linewidth = .75,
-                             label = r'Data'+" : "+str(p.integral())+" fb")
+                             label = dataStr+" : "+str(p.integral())+" fb")
             else:
                 ax.step(p.Xl, [z for z in p.Y], where='post', color=p.col, linewidth=.75, label=p.title+" : "+str(p.integral())+" fb", linestyle='-')
                 ax.errorbar(pts, [z for z in p.Y], xerr=x_errors, yerr=(p.errsM, p.errsP), color=p.col, fmt='',
@@ -305,14 +272,14 @@ def plot_single(p_env, Title, xTup, yTup, sv_list=0, xLab="", yLab=""):
                 ax[0].errorbar(pts, [z for z in p.Y], xerr = x_errors,
                              yerr = (p.errsM, p.errsP), fmt = '.',
                              color = "black", markersize='5', linewidth = .75,
-                             label = r'ATLAS: arXiv/1407.4222'+" : "+str(p.integral())+" fb")
+                             label = dataStr+" : "+str(p.integral())+" fb")
                 ax[1].errorbar(pts, [(x+eps)/(y+eps) for x, y in zip(p.Y, p.Y)],
                                    xerr = x_errors, yerr = ([(x+eps)/(y+eps)
                                    for x, y in zip(p.errsM, p.Y)],[(x+eps)/(y+eps)
                                    for x, y in zip(p.errsP, p.Y)]),
                              fmt = '.', markersize='5', color = "black",
                              linewidth = .75,
-                             label = r'ATLAS: arXiv/1407.4222'+" : "+str(p.integral())+" fb")
+                             label = dataStr+" : "+str(p.integral())+" fb")
             else:
                 ax[0].step(p.Xl, [z for z in p.Y], where='post', color=p.col, linewidth=.75, label=p.title+" : "+str(p.integral())+" fb", linestyle='-')
                 ax[0].errorbar(pts, [z for z in p.Y], xerr=x_errors, yerr=(p.errsM, p.errsP), color=p.col, fmt='',
@@ -325,15 +292,12 @@ def plot_single(p_env, Title, xTup, yTup, sv_list=0, xLab="", yLab=""):
                                color=p.col, fmt='', linewidth=1., ls='none')
 
     if (p_env.ratio != 1):
-        ax.legend(loc='upper right', title=r'$pp\rightarrow jj$ at $\sqrt{s}= 7$ TeV'+'\n'+r'$\overline{k_T}$ jets, $R=0.4$, $p_{T} > 60$ GeV, $y_j<2.8$', frameon=False)
+        ax.legend(loc='upper right', title=legendStr, frameon=False)
         ax.get_legend()._legend_box.align = "left"
     else:
-        ax[0].legend(loc='upper right', title=r'$pp\rightarrow jj$ at $\sqrt{s}= 7$ TeV'+'\n'+r'$\overline{k_T}$ jets, $R=0.4$, $p_{T} > 60$ GeV, $y_j<2.8$', frameon=False)
+        ax[0].legend(loc='upper right', title=legendStr, frameon=False)
         ax[0].get_legend()._legend_box.align = "left"
     plt.savefig(outputDirectory+Title+".pdf", bbox_inches="tight")
-
-    # plt.show()
-
 
 def plot_scale_bands(plots, ax1, ax2, pts, x_errors, **kwargs):
     """Plots a single histogram with scale variation bands"""
@@ -406,32 +370,3 @@ def plot_scale_bands(plots, ax1, ax2, pts, x_errors, **kwargs):
                          linewidth=0)
 
     return ax1, ax2
-
-def main():
-   # plot_single(unpack("d01-x01-y01.dat"), "d01-x01-y01", (50,10), (2e-3,1e1), [1,4])
-   # plot_single(unpack("d02-x01-y01.dat"), "d02-x01-y01", (0.5,0.1), (0.01,49), [1,4])
-    plot_single(unpack("d03-x01-y01.dat"), "d03-x01-y01", (1.,0.5), (0.01,38), [1,4])
-   # #plot_single(unpack("d04-x01-y01.dat"), "d04-x01-y01", (1.,0.5), (0.01,25), [1,4]) # for this one don't forget to change the legend text on the plot (line 329) !!!
-    plot_single(unpack("d06-x01-y01.dat"), "d06-x01-y01", (0.5,0.1), (0.01,19), [1,4])
-    plot_single(unpack("d08-x01-y01.dat"), "d08-x01-y01", (20,5), (5e-3,1.5e0), [1,4])
-    plot_single(unpack("d09-x01-y01.dat"), "d09-x01-y01", (1,0.5), (5e-3,9e0), [1,4])
-    plot_single(unpack("d10-x01-y01.dat"), "d10-x01-y01", (1,0.5), (5e-2,1.1e2), [1,4])
-   # plot_single(unpack("d11-x01-y01.dat"), "d11-x01-y01", (0.1,0.02), (-19.9,147), [1,4])
-   # plot_single(unpack("d12-x01-y01.dat"), "d12-x01-y01", (0.1,0.02), (0.01,115), [1,4])
-    plot_single(unpack("d13-x01-y01.dat"), "d13-x01-y01", (1,0.5), (-1,14), [1,4])
-   # plot_single(unpack("d14-x01-y01.dat"), "d14-x01-y01", (20,5), (2e-2,4e0), [1,4])
-   # plot_single(unpack("d15-x01-y01.dat"), "d15-x01-y01", (0.5,0.1), (-5,59), [1,4])
-    plot_single(unpack("d18-x01-y01.dat"), "d18-x01-y01", (0.5,0.1), (-0.5,6.1), [1,4])
-    plot_single(unpack("d19-x01-y01.dat"), "d19-x01-y01", (20,5), (2e-3,5e-1), [1,4])
-    plot_single(unpack("d20-x01-y01.dat"), "d20-x01-y01", (200,50), (2e-4,5e-2), [1,4])
-    plot_single(unpack("d21-x01-y01.dat"), "d21-x01-y01", (20,5), (1.1e-3,3e0), [1,4])
-   # plot_single(unpack("d22-x01-y01.dat"), "d22-x01-y01", (0.1,0.02), (-0.1,95), [1,4], xLab=r"$|\textrm{cos}\theta^\star|$ ($p^{\gamma \gamma}_T<80$ GeV)", yLab=r"$d\sigma_{\textrm{fid}} / d |\textrm{cos} \theta^\star|$ [fb]")
-   # plot_single(unpack("d22-x01-y02.dat"), "d22-x01-y02", (0.1,0.02), (-4,16), [1,4], xLab=r"$|\textrm{cos}\theta^\star|$ ($80<p^{\gamma \gamma}_T<200$ GeV)", yLab=r"$d\sigma_{\textrm{fid}} / d |\textrm{cos} \theta^\star|$ [fb]")
-   # plot_single(unpack("d22-x01-y03.dat"), "d22-x01-y03", (0.1,0.02), (-0.1,2.6), [1,4], xLab=r"$|\textrm{cos}\theta^\star|$ ($p^{\gamma \gamma}_T>200$ GeV)", yLab=r"$d\sigma_{\textrm{fid}} / d |\textrm{cos} \theta^\star|$ [fb]")
-    plot_single(unpack("d23-x01-y02.dat"), "d23-x01-y02", (50,10), (-0.02,0.39), [1,4], xLab=r"$p^{\gamma \gamma}_{T}$ ($N_\textrm{jets}=1$) [GeV]", yLab=r"$d\sigma_{\textrm{fid}} / d p^{\gamma \gamma}_{T}$ [fb/GeV]")
-    plot_single(unpack("d23-x01-y03.dat"), "d23-x01-y03", (50,10), (-0.005,0.13), [1,4], xLab=r"$p^{\gamma \gamma}_{T}$ ($N_\textrm{jets}\geq 2$) [GeV]", yLab=r"$d\sigma_{\textrm{fid}} / d p^{\gamma \gamma}_{T}$ [fb/GeV]")
-    plot_single(unpack("d24-x01-y01.dat"), "d24-x01-y01", (20,5), (0.01,1.2), [1,4], xLab=r"$p_{T,j_1}$ ($N_\textrm{jets}=1$) [GeV]", yLab=r"$d\sigma_{\textrm{fid}} / d p_{T,j_1}$ [fb/GeV]")
-    plot_single(unpack("d30-x01-y01.dat"), "d30-x01-y01", (1,0.2), (0.2,100), [1,4], xLab=r"Region ID"r" (baseline, $N_\textrm{jets}\geq 1,2,3$, VBF)", yLab=r"$\sigma_{\textrm{fid}}$ [fb]")
-
-if __name__ == "__main__":
-    main()
