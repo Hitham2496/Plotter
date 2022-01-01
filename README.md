@@ -10,8 +10,7 @@ plots) with ample room for customisation.
   * Download the source code from this repository and copy the ```dat``` files to be
   plotted into the same directory.
   * Create a runcard based on ```Run.py``` replacing the names of the ```dat``` files
-  with those to be plotted, customising the output as desired OR modify the ```main()```
-  method in Plotter.py.
+  with those to be plotted, customising the output as desired.
   * Run the runcard, the plots will be (by default) produced as pdf files in a subdirectory
   named ```plots```.
 
