@@ -19,7 +19,7 @@ ErrorBars=1
 LineColor=red
 LineStyle=solid
 Path=//mt/home/hhassan/Projects/HEJ_PYTHIA/pythia_merging/results/WJETS-ATLAS-SM/res/HEJ_W.yoda/WJETS_ATLAS_SM/h_dy_jet12_2j
-Title=HEJ\_W
+Title=HEJ $pp\rightarrow Wjj$
 XLabel=~
 YLabel=~
 # xlow	 xhigh	 val	 errminus	 errplus
@@ -107,7 +107,7 @@ LineColor=orange
 LineStyle=solid
 Path=//mt/home/hhassan/Projects/HEJ_PYTHIA/pythia_merging/results/WJETS-ATLAS-SM/res/wjets-13TeV.yoda/WJETS_ATLAS_SM/h_dy_jet12_2j
 ScaledBy=1.74872898404042961e-03
-Title=Pythia\_W
+Title=Pythia $pp\rightarrow Wjj$
 XLabel=~
 YLabel=~
 # xlow	 xhigh	 val	 errminus	 errplus
