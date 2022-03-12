@@ -11,11 +11,7 @@ from matplotlib import pyplot as plt  # plotting
 from matplotlib.ticker import MultipleLocator
 from itertools import groupby
 
-outputDirectory = 'plots/'
-dataStr = r'Data'
-legendStr = r'Theoretical Predictions'
 printOuts = True
-eps = 1e-20
 
 class plot_env:
 
@@ -221,8 +217,11 @@ def sort_env(p_env, sv_list):
     return scale_vars, rest
 
 
-def plot_single(p_env, Title, xTup, yTup, sv_list=0, xLab="", yLab=""):
+def plot_single(p_env, Title, xTup, yTup, sv_list=0, xLab="", yLab="", legStr=""):
     """Plots all of the distributions corresponding to a single histogram"""
+    EPS = 1e-20
+    DATASTR = r'Data'
+
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
 
@@ -242,65 +241,67 @@ def plot_single(p_env, Title, xTup, yTup, sv_list=0, xLab="", yLab=""):
     sv, rest = sort_env(p_env, sv_list)
     ax2 = 0
     
-    if printOuts: print("Plotting %s to %s" % (Title, outputDirectory+Title+".pdf"))
+    if printOuts: print("Plotting %s" % Title+".pdf")
 
     if (sv != 0):
         if (p_env.ratio == 1):
             ax2 = ax[1]
             for pl in sv:
-                if printOuts: print("\tPlotting curve with scale uncertainty %s for %s" % (pl.title, Title))
+                if printOuts: print("\tPlotting curve with scale uncertainty %s for %s" % (pl[0].title, Title))
                 ax[0], ax2 = plot_scale_bands(pl, ax[0], ax2, pts, x_errors, data=p_env.plots[0]) #data=sv[0][0])
         else:
             for pl in sv:
-                if printOuts: print("\tPlotting curve with scale uncertainty %s for %s" % (pl.title, Title))
+                if printOuts: print("\tPlotting curve with scale uncertainty %s for %s" % (pl[0].title, Title))
                 ax, ax2 = plot_scale_bands(pl, ax, ax2, pts, x_errors, data=p_env.plots[0]) #data=sv[0][0])
 
     for p in rest:
-        if printOuts: print("\tPlotting curve %s for %s" % (pl.title, Title))
+        if printOuts: print("\tPlotting curve %s for %s" % (p.title, Title))
         if (p_env.ratio != 1):
             if (p.title == "Data"):
                 ax.errorbar(pts, [z for z in p.Y], xerr = x_errors,
                              yerr = (p.errsM, p.errsP), fmt = '.',
                              color = "black", markersize='5', linewidth = .75,
-                             label = dataStr+" : "+str(p.integral())+" fb")
+                             label = DATASTR+" : "+str(p.integral())+" pb")
             else:
-                ax.step(p.Xl, [z for z in p.Y], where='post', color=p.col, linewidth=.75, label=p.title+" : "+str(p.integral())+" fb", linestyle='-')
-                ax.errorbar(pts, [z for z in p.Y], xerr=x_errors, yerr=(p.errsM, p.errsP), color=p.col, fmt='',
-                            linewidth=.75, ls='none')
+                ax.step(p.Xl, [z for z in p.Y], where='post', color=p.col, linewidth=.75, linestyle='-')
+                ax.errorbar(pts, [z for z in p.Y], xerr=x_errors, yerr=(p.errsM, p.errsP),
+                            label=p.title+" : "+str(p.integral())+" pb", linewidth=.75,
+                            color=p.col, fmt='', ls='none')
         else:
             if (p.title == "Data"):
                 ax[0].errorbar(pts, [z for z in p.Y], xerr = x_errors,
                              yerr = (p.errsM, p.errsP), fmt = '.',
                              color = "black", markersize='5', linewidth = .75,
-                             label = dataStr+" : "+str(p.integral())+" fb")
-                ax[1].errorbar(pts, [(x+eps)/(y+eps) for x, y in zip(p.Y, p.Y)],
-                                   xerr = x_errors, yerr = ([(x+eps)/(y+eps)
-                                   for x, y in zip(p.errsM, p.Y)],[(x+eps)/(y+eps)
+                             label = DATASTR+" : "+str(p.integral())+" pb")
+                ax[1].errorbar(pts, [(x+EPS)/(y+EPS) for x, y in zip(p.Y, p.Y)],
+                                   xerr = x_errors, yerr = ([(x+EPS)/(y+EPS)
+                                   for x, y in zip(p.errsM, p.Y)],[(x+EPS)/(y+EPS)
                                    for x, y in zip(p.errsP, p.Y)]),
                              fmt = '.', markersize='5', color = "black",
                              linewidth = .75,
-                             label = dataStr+" : "+str(p.integral())+" fb")
+                             label = DATASTR+" : "+str(p.integral())+" pb")
             else:
-                ax[0].step(p.Xl, [z for z in p.Y], where='post', color=p.col, linewidth=.75, label=p.title+" : "+str(p.integral())+" fb", linestyle='-')
+                ax[0].step(p.Xl, [z for z in p.Y], where='post', color=p.col, linewidth=.75, linestyle='-')
                 ax[0].errorbar(pts, [z for z in p.Y], xerr=x_errors, yerr=(p.errsM, p.errsP), color=p.col, fmt='',
-                               linewidth=.75, ls='none')
+                               linewidth=.75, label=p.title+" : "+str(p.integral())+" pb", ls='none')
                 ax[1].step(p.Xl,
-                           [x/(y+eps) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], where='post',
-                           color=p.col, linewidth=.75, label=p.title)
-                ax[1].errorbar(pts, [x/(y+eps) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], xerr=x_errors,
-                               yerr=([x/(y+eps) for x, y in zip(p.errsM, p.Y)], [x/(y+eps) for x, y in zip(p.errsP, p.Y)]),
-                               color=p.col, fmt='', linewidth=1., ls='none')
+                           [x/(y+EPS) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], where='post',
+                           color=p.col, linewidth=.75)
+                ax[1].errorbar(pts, [x/(y+EPS) for x, y in zip(p.Y, p_env.plots[0].Y[:len(p.Y)])], xerr=x_errors,
+                               yerr=([x/(y+EPS) for x, y in zip(p.errsM, p.Y)], [x/(y+EPS) for x, y in zip(p.errsP, p.Y)]),
+                               color=p.col, fmt='', label=p.title+" : "+str(p.integral())+" pb", linewidth=1., ls='none')
 
     if (p_env.ratio != 1):
-        ax.legend(loc='upper right', title=legendStr, frameon=False)
+        ax.legend(loc='upper right', title=legStr, frameon=False)
         ax.get_legend()._legend_box.align = "left"
     else:
-        ax[0].legend(loc='upper right', title=legendStr, frameon=False)
+        ax[0].legend(loc='upper right', title=legStr, frameon=False)
         ax[0].get_legend()._legend_box.align = "left"
-    plt.savefig(outputDirectory+Title+".pdf", bbox_inches="tight")
+    plt.savefig(Title+".pdf", bbox_inches="tight")
 
 def plot_scale_bands(plots, ax1, ax2, pts, x_errors, **kwargs):
     """Plots a single histogram with scale variation bands"""
+    EPS = 1e-20
     pts = []
     new_bins = plots[0].Xh[:]
     new_bins.insert(0, plots[0].Xl[0])
@@ -324,21 +325,21 @@ def plot_scale_bands(plots, ax1, ax2, pts, x_errors, **kwargs):
             ax1.errorbar(pts, [z*xa for z in p.Y],
                          xerr=x_errors, yerr=(p.errsM, p.errsP),
                          fmt='.', color=p.col, markersize='0.01',
-                         linewidth=.75, label=p.title+" : "+str(p.integral())+" fb")
+                         linewidth=.75, label=p.title+" : "+str(p.integral())+" pb")
             ax1.step(p.Xl, [z*xa for z in p.Y], where='post', color=p.col,
                      linewidth=.25, alpha=0.5, linestyle='-')
             if (ax2 != 0):
                 ax2.errorbar(pts,
-                             [(x*xa+eps)/(y+eps) for x, y in zip(p.Y, data.Y)],
-                             xerr=x_errors, yerr=([(x*xa+eps)/(y+eps)
+                             [(x*xa+EPS)/(y+EPS) for x, y in zip(p.Y, data.Y)],
+                             xerr=x_errors, yerr=([(x*xa+EPS)/(y+EPS)
                                                   for x, y in
                                                   zip(p.errsM, data.Y)],
-                             [(x*xa+eps)/(y+eps)
+                             [(x*xa+EPS)/(y+EPS)
                               for x, y in zip(p.errsP, data.Y)]), fmt='.',
                              markersize='0.01', color=p.col, linewidth=.75,
-                             label=p.title+" : "+str(p.integral())+" fb")
+                             label=p.title+" : "+str(p.integral())+" pb")
 
-                ax2.step(p.Xl, [(x*xa+eps)/(y+eps) for x, y in zip(p.Y, data.Y)],
+                ax2.step(p.Xl, [(x*xa+EPS)/(y+EPS) for x, y in zip(p.Y, data.Y)],
                                 where='post', color=p.col, linewidth=.25,
                                 alpha=0.5, linestyle='-')
 
@@ -356,16 +357,16 @@ def plot_scale_bands(plots, ax1, ax2, pts, x_errors, **kwargs):
                      y_minmax[-1][1], color=plots[0].col, step="pre",
                      alpha=0.5, linewidth=0)
     if (ax2 != 0):
-        ax2.fill_between(plots[0].Xl, [x[0]/(y+eps) for x, y
+        ax2.fill_between(plots[0].Xl, [x[0]/(y+EPS) for x, y
                                        in zip(y_minmax, data.Y[:len(p.Y)])],
-                         [x[1]/(y+eps) for x, y
+                         [x[1]/(y+EPS) for x, y
                           in zip(y_minmax, data.Y[:len(p.Y)])],
                          color=plots[0].col, step="post", alpha=0.5,
                          linewidth=0)
 
         ax2.fill_between([plots[0].Xl[-1], plots[0].Xh[-1]],
-                         y_minmax[-1][0]/(data.Y[-1]+eps),
-                         y_minmax[-1][1]/(data.Y[-1]+eps),
+                         y_minmax[-1][0]/(data.Y[-1]+EPS),
+                         y_minmax[-1][1]/(data.Y[-1]+EPS),
                          color=plots[0].col, step="post", alpha=0.5,
                          linewidth=0)
 
