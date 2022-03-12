@@ -4,7 +4,7 @@
 Plotting commands
 @author: hhassan
 """
-import plotter
+import Plotter
 
 def main():
 
