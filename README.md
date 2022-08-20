@@ -14,8 +14,6 @@ plots) with ample room for customisation.
   * Run the runcard, the plots will be (by default) produced as pdf files in a subdirectory
   named ```plots```.
 
-You may add the directory containing ```Plotter``` to your ```$PYTHONPATH``` for more flexibility
-
 This program requires python>3 and has been tested with python3.7. No local
 installation of ```rivet``` is required. The python packages required are:
   
