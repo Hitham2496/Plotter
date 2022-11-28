@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Plotting commands
-@author: hhassan
+Example run file to produce plots displayed in base directory
+@author: Hitham2496
 """
 from Plotter import plotter
 
