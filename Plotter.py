@@ -3,7 +3,7 @@
 """
 Plotting routine for .dat files created by rivet-mkhtml
 
-@author: hhassan
+@author: Hitham2496
 """
 
 import matplotlib
